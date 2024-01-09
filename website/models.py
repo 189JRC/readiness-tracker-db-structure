@@ -194,3 +194,24 @@ class ProjectOrganisation(db.Model):
     only_visible = db.Column(db.Boolean, nullable=False, default=False)
     is_deleted = db.Column(db.Boolean, nullable=False, default=False)
     created_timestamp = db.Column(db.TIMESTAMP(timezone=True), default=db.func.now())
+
+
+class Task(db.Model):
+    __tablename__ = "tasks"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.String(200), unique=True, nullable=False)
+    is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    created_timestamp = db.Column(
+        db.DateTime(timezone=True), server_default=db.func.now()
+    )
+
+    # Maps to the projects table
+    project_id = db.Column(
+        db.Integer,
+        ForeignKey(
+            "projects.id",
+            name=f"fk_{__tablename__}_projects",
+            ondelete="CASCADE",
+        ),
+    )

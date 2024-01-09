@@ -8,6 +8,7 @@ from website.models import (
     OrganisationOrganisation,
     Project,
     ProjectOrganisation,
+    Task,
 )
 
 from dotenv import load_dotenv
@@ -213,7 +214,7 @@ def create_project():
 
         # Step 2: Create a new project
         new_project = Project(
-            name=f"{setter} Project",
+            name=f"{setter} project",
             description=f"This {setter} project will be seen by all children",
             organisation_id=org.id,
         )
@@ -233,6 +234,28 @@ def create_project():
         db.session.commit()
     except Exception as e:
         print(f"Error populating ProjectOrganisation: {str(e)}")
+        db.session.rollback()
+
+
+def create_tasks():
+    # Get the project
+    project = Project.query.filter_by(name="head office project").first()
+
+    no_of_tasks = 20
+    tasks_to_add_to_db = []
+    for i in range(no_of_tasks):
+        tasks_to_add_to_db.append(
+            Task(
+                name=f"Task {i+1}",
+                description=f"Description for task {i+1}",
+                project_id=project.id,
+            )
+        )
+    try:
+        db.session.add_all(tasks_to_add_to_db)
+        db.session.commit()
+    except Exception as e:
+        print(f"Error populating Tasks: {str(e)}")
         db.session.rollback()
 
 
@@ -258,6 +281,9 @@ def delete_all_entries():
     # Delete all entries in Project table
     db.session.query(Project).delete()
 
+    # Delete all entries in Task table
+    db.session.query(Task).delete()
+
     # Commit the changes
     db.session.commit()
 
@@ -272,3 +298,4 @@ if __name__ == "__main__":
         assign_users_to_orgs()
         create_initial_org_groups()
         create_project()
+        create_tasks()
