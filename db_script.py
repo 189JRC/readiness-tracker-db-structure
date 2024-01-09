@@ -217,11 +217,14 @@ def create_project():
             organisational_heirarchy_id=heirarchy_obj.id
         ).first()
 
+        user = User.query.all()[0]
+
         # Step 2: Create a new project
         new_project = Project(
             name=f"{setter} project",
             description=f"This {setter} project will be seen by all children",
             organisation_id=org.id,
+            user_id=user.id,
         )
 
         db.session.add(new_project)

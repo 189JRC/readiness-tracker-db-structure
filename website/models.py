@@ -158,6 +158,16 @@ class Project(db.Model):
         ),
     )
 
+    # Maps to the organisation table
+    user_id = db.Column(
+        db.Integer,
+        ForeignKey(
+            "users.id",
+            name=f"fk_{__tablename__}_users",
+            ondelete="CASCADE",
+        ),
+    )
+
 
 class ProjectOrganisation(db.Model):
     __tablename__ = "projects_organisations"
