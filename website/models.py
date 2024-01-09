@@ -140,3 +140,57 @@ class OrganisationOrganisation(db.Model):
     group_name = db.Column(db.String(100), nullable=False, default="default")
     is_deleted = db.Column(db.Boolean, nullable=False, default=False)
     created_timestamp = db.Column(db.TIMESTAMP(timezone=True), default=db.func.now())
+
+
+class Project(db.Model):
+    __tablename__ = "projects"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.String(200), unique=True, nullable=False)
+    is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    created_timestamp = db.Column(
+        db.DateTime(timezone=True), server_default=db.func.now()
+    )
+
+    # Maps to the organisation table
+    organisation_id = db.Column(
+        db.Integer,
+        ForeignKey(
+            "organisations.id",
+            name=f"fk_{__tablename__}_organisations",
+            ondelete="CASCADE",
+        ),
+    )
+
+
+class ProjectOrganisation(db.Model):
+    __tablename__ = "projects_organisations"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "organisation_id",
+            "project_id",
+            name="unique_project_organisation",
+        ),
+    )
+    id = db.Column(db.Integer, primary_key=True)
+    organisation_id = db.Column(
+        db.Integer,
+        db.ForeignKey(
+            "organisations.id",
+            name=f"fk_organisations",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
+    project_id = db.Column(
+        db.Integer,
+        db.ForeignKey(
+            "projects.id",
+            name=f"fk_projects",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
+    only_visible = db.Column(db.Boolean, nullable=False, default=False)
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False)
+    created_timestamp = db.Column(db.TIMESTAMP(timezone=True), default=db.func.now())

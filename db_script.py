@@ -6,15 +6,18 @@ from website.models import (
     OrganisationHeirarchy,
     User_Organisation,
     OrganisationOrganisation,
+    Project,
+    ProjectOrganisation,
 )
+
 from dotenv import load_dotenv
 
 from werkzeug.security import generate_password_hash
 from sqlalchemy.exc import IntegrityError, DataError
 from faker import Faker
+import random
 
 fake = Faker()
-
 
 # Create the Flask app
 app = create_app()
@@ -131,6 +134,108 @@ def assign_users_to_orgs():
         db.session.rollback()
 
 
+def create_initial_org_groups():
+    # Loop through org heirarchy table (reversed)
+    all_heirarchies = OrganisationHeirarchy.query.all()
+
+    for heirarchy in all_heirarchies[::-1]:
+        if heirarchy.name == "super user":
+            break
+        orgs_to_assign_parent = Organisation.query.filter_by(
+            organisational_heirarchy_id=heirarchy.id
+        ).all()
+
+        parent_orgs = Organisation.query.filter_by(
+            organisational_heirarchy_id=(heirarchy.id - 1)
+        ).all()
+
+        for org in orgs_to_assign_parent:
+            org_org_relationship = OrganisationOrganisation(
+                parent_organisation_id=random.choice(parent_orgs).id,
+                child_organisation_id=org.id,
+            )
+            db.session.add(org_org_relationship)
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        print(f"Error assigning users to organizations: {str(e)}")
+        db.session.rollback()
+
+
+def make_projects_visibile_to_children(new_project, parent_org):
+    # Step 3: Recursively populate ProjectOrganisation with project ID for all descendants
+    def populate_project_organisation(project, parent_org):
+        try:
+            children = (
+                db.session.query(Organisation)
+                .join(
+                    OrganisationOrganisation,
+                    Organisation.id == OrganisationOrganisation.child_organisation_id,
+                )
+                .filter(
+                    OrganisationOrganisation.parent_organisation_id == parent_org.id
+                )
+                .all()
+            )
+        except:
+            children = []
+
+        project_org_relationships = []
+        for child_org in children:
+            project_org_relationship = ProjectOrganisation(
+                organisation_id=child_org.id,
+                project_id=project.id,
+                only_visible=False,  # Make the project visible to children
+            )
+            project_org_relationships.append(project_org_relationship)
+
+        db.session.add_all(project_org_relationships)
+
+        # Recursively call the function for each child
+        for child_org in children:
+            populate_project_organisation(project, child_org)
+
+    # Call the recursive function to populate ProjectOrganisation
+    populate_project_organisation(new_project, parent_org)
+
+
+def create_project():
+    project_setters = ["head office", "area"]
+
+    for setter in project_setters:
+        # Step 1: Retrieve the Head Office organization
+        heirarchy_obj = OrganisationHeirarchy.query.filter_by(name=setter).first()
+
+        org = Organisation.query.filter_by(
+            organisational_heirarchy_id=heirarchy_obj.id
+        ).first()
+
+        # Step 2: Create a new project
+        new_project = Project(
+            name=f"{setter} Project",
+            description=f"This {setter} project will be seen by all children",
+            organisation_id=org.id,
+        )
+
+        db.session.add(new_project)
+
+        try:
+            db.session.commit()
+        except Exception as e:
+            print(f"Error creating project: {str(e)}")
+            db.session.rollback()
+            return
+
+        make_projects_visibile_to_children(new_project, org)
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        print(f"Error populating ProjectOrganisation: {str(e)}")
+        db.session.rollback()
+
+
 def delete_all_entries():
     # Delete all entries in User_organisation table
     db.session.query(User_Organisation).delete()
@@ -147,6 +252,12 @@ def delete_all_entries():
     # Delete all entries in Organisation_Organisation table
     db.session.query(OrganisationOrganisation).delete()
 
+    # Delete all entries in ProjectOrganisation table
+    db.session.query(ProjectOrganisation).delete()
+
+    # Delete all entries in Project table
+    db.session.query(Project).delete()
+
     # Commit the changes
     db.session.commit()
 
@@ -159,3 +270,5 @@ if __name__ == "__main__":
         add_orgs()
         add_users()
         assign_users_to_orgs()
+        create_initial_org_groups()
+        create_project()
