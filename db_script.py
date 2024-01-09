@@ -9,6 +9,8 @@ from website.models import (
     Project,
     ProjectOrganisation,
     Task,
+    TaskStatus,
+    TaskProgress,
 )
 
 from dotenv import load_dotenv
@@ -259,6 +261,24 @@ def create_tasks():
         db.session.rollback()
 
 
+def create_task_status():
+    task_statuses = ["blocked", "not started", "complete", "in progress"]
+    task_statuses_to_add_to_db = []
+    for status in task_statuses:
+        task_statuses_to_add_to_db.append(TaskStatus(name=status))
+
+    try:
+        db.session.add_all(task_statuses_to_add_to_db)
+        db.session.commit()
+    except Exception as e:
+        print(f"Error populating Tasks: {str(e)}")
+        db.session.rollback()
+
+
+def create_task_progress():
+    pass
+
+
 def delete_all_entries():
     # Delete all entries in User_organisation table
     db.session.query(User_Organisation).delete()
@@ -283,6 +303,12 @@ def delete_all_entries():
 
     # Delete all entries in Task table
     db.session.query(Task).delete()
+
+    # Delete all entries in TaskProgress table
+    db.session.query(TaskProgress).delete()
+
+    # Delete all entries in TaskStatus table
+    db.session.query(TaskStatus).delete()
 
     # Commit the changes
     db.session.commit()

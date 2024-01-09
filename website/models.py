@@ -38,9 +38,7 @@ class User(db.Model):
     mfa_secret_confirmed = db.Column(
         db.BOOLEAN, nullable=False, server_default=expression.false()
     )
-    is_deleted = db.Column(
-        db.BOOLEAN, nullable=False, server_default=expression.false()
-    )
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False)
     pii_key_id = db.Column(db.Integer, index=True, nullable=False, server_default="0")
     created_timestamp = db.Column(db.DateTime(timezone=True), server_default=func.now())
 
@@ -54,7 +52,7 @@ class OrganisationHeirarchy(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(30), unique=True, nullable=False)
     level = db.Column(db.Integer, unique=True, nullable=False)
-    is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False)
     created_timestamp = db.Column(
         db.DateTime(timezone=True), server_default=db.func.now()
     )
@@ -68,7 +66,7 @@ class Organisation(db.Model):
     name = db.Column(db.String(30), unique=True, nullable=False)
     code = db.Column(db.String(30), unique=True, nullable=False)
     type = db.Column(db.String(30), nullable=False)
-    is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False)
     created_timestamp = db.Column(
         db.DateTime(timezone=True), server_default=db.func.now()
     )
@@ -102,9 +100,7 @@ class User_Organisation(db.Model):
         ),
         nullable=True,
     )
-    is_deleted = db.Column(
-        db.BOOLEAN, nullable=False, server_default=expression.false()
-    )
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False)
     created_timestamp = db.Column(db.DateTime(timezone=True), server_default=func.now())
 
 
@@ -147,7 +143,7 @@ class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
     description = db.Column(db.String(200), unique=True, nullable=False)
-    is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False)
     created_timestamp = db.Column(
         db.DateTime(timezone=True), server_default=db.func.now()
     )
@@ -201,7 +197,7 @@ class Task(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
     description = db.Column(db.String(200), unique=True, nullable=False)
-    is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False)
     created_timestamp = db.Column(
         db.DateTime(timezone=True), server_default=db.func.now()
     )
@@ -221,7 +217,7 @@ class TaskStatus(db.Model):
     __tablename__ = "task_status"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(30), unique=True, nullable=False)
-    is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False)
     created_timestamp = db.Column(
         db.DateTime(timezone=True), server_default=db.func.now()
     )
@@ -232,7 +228,7 @@ class TaskProgress(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     blocked_reason = db.Column(db.String(200), unique=False, nullable=True)
     blocked_plan = db.Column(db.String(200), unique=False, nullable=True)
-    is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False)
     created_timestamp = db.Column(
         db.DateTime(timezone=True), server_default=db.func.now()
     )
@@ -272,4 +268,36 @@ class TaskProgress(db.Model):
             name=f"fk_{__tablename__}_task_status",
             ondelete="CASCADE",
         ),
+    )
+
+
+class BlockedSuggestions(db.Model):
+    __tablename__ = "blocked_suggestions"
+    id = db.Column(db.Integer, primary_key=True)
+    description = db.Column(db.String(200), unique=False, nullable=False)
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False)
+    created_timestamp = db.Column(
+        db.DateTime(timezone=True), server_default=db.func.now()
+    )
+    date_updated = db.Column(
+        db.DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    # Maps to the tasks table
+    task_id = db.Column(
+        db.Integer,
+        ForeignKey(
+            "tasks.id",
+            name=f"fk_{__tablename__}_tasks",
+            ondelete="CASCADE",
+        ),
+    )
+
+
+class Email(db.Model):
+    __tablename__ = "emails"
+    id = db.Column(db.Integer, primary_key=True)
+    description = db.Column(db.String(500), unique=False, nullable=False)
+    created_timestamp = db.Column(
+        db.DateTime(timezone=True), server_default=db.func.now()
     )
