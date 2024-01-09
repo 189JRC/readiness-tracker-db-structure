@@ -206,28 +206,6 @@ def make_projects_visibile_to_children(new_project, parent_org):
     populate_project_organisation(new_project, parent_org)
 
 
-def create_tasks():
-    # Get the project
-    project = Project.query.filter_by(name="head office project").first()
-
-    no_of_tasks = 20
-    tasks_to_add_to_db = []
-    for i in range(no_of_tasks):
-        tasks_to_add_to_db.append(
-            Task(
-                name=f"Task {i+1}",
-                description=f"Description for task {i+1}",
-                project_id=project.id,
-            )
-        )
-    try:
-        db.session.add_all(tasks_to_add_to_db)
-        db.session.commit()
-    except Exception as e:
-        print(f"Error populating Tasks: {str(e)}")
-        db.session.rollback()
-
-
 def create_project():
     project_setters = ["head office", "area"]
 
@@ -278,8 +256,52 @@ def create_task_status():
         db.session.rollback()
 
 
+def create_tasks():
+    # Get the project
+    project = Project.query.filter_by(name="head office project").first()
+
+    no_of_tasks = 20
+    tasks_to_add_to_db = []
+    for i in range(no_of_tasks):
+        tasks_to_add_to_db.append(
+            Task(
+                name=f"Task {i+1}",
+                description=f"Description for task {i+1}",
+                project_id=project.id,
+            )
+        )
+    try:
+        db.session.add_all(tasks_to_add_to_db)
+        db.session.commit()
+    except Exception as e:
+        print(f"Error populating Tasks: {str(e)}")
+        db.session.rollback()
+
+
 def create_task_progress():
-    pass
+    project = Project.query.filter_by(name="head office project").first()
+    user = User.query.all()[0]
+    org = Organisation.query.all()[0]
+    task_progresses_to_add_to_db = []
+    task_status = TaskStatus.query.filter_by(name="not started").first()
+
+    tasks = Task.query.filter_by(project_id=project.id).all()
+    for task in tasks:
+        task_progresses_to_add_to_db.append(
+            TaskProgress(
+                organisation_id=org.id,
+                task_id=task.id,
+                user_id=user.id,
+                task_status_id=task_status.id,
+            )
+        )
+
+    try:
+        db.session.add_all(task_progresses_to_add_to_db)
+        db.session.commit()
+    except Exception as e:
+        print(f"Error populating Tasks: {str(e)}")
+        db.session.rollback()
 
 
 def delete_all_entries():
@@ -313,3 +335,4 @@ if __name__ == "__main__":
         create_project()
         create_task_status()
         create_tasks()
+        create_task_progress()
