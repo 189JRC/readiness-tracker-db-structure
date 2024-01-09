@@ -215,3 +215,61 @@ class Task(db.Model):
             ondelete="CASCADE",
         ),
     )
+
+
+class TaskStatus(db.Model):
+    __tablename__ = "task_status"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(30), unique=True, nullable=False)
+    is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    created_timestamp = db.Column(
+        db.DateTime(timezone=True), server_default=db.func.now()
+    )
+
+
+class TaskProgress(db.Model):
+    __tablename__ = "task_progress"
+    id = db.Column(db.Integer, primary_key=True)
+    blocked_reason = db.Column(db.String(200), unique=False, nullable=True)
+    blocked_plan = db.Column(db.String(200), unique=False, nullable=True)
+    is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    created_timestamp = db.Column(
+        db.DateTime(timezone=True), server_default=db.func.now()
+    )
+
+    # Maps to the organisation table
+    organisation_id = db.Column(
+        db.Integer,
+        ForeignKey(
+            "organisations.id",
+            name=f"fk_{__tablename__}_organisations",
+            ondelete="CASCADE",
+        ),
+    )
+    # Maps to the tasks table
+    task_id = db.Column(
+        db.Integer,
+        ForeignKey(
+            "tasks.id",
+            name=f"fk_{__tablename__}_tasks",
+            ondelete="CASCADE",
+        ),
+    )
+    # Maps to the user table
+    user_id = db.Column(
+        db.Integer,
+        ForeignKey(
+            "users.id",
+            name=f"fk_{__tablename__}_users",
+            ondelete="CASCADE",
+        ),
+    )
+    # Maps to the task status table
+    task_status_id = db.Column(
+        db.Integer,
+        ForeignKey(
+            "task_status.id",
+            name=f"fk_{__tablename__}_task_status",
+            ondelete="CASCADE",
+        ),
+    )
