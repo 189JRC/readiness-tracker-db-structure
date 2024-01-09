@@ -11,6 +11,9 @@ from website.models import (
     Task,
     TaskStatus,
     TaskProgress,
+    BlockedSuggestions,
+    Email,
+    EmailsSent,
 )
 
 from dotenv import load_dotenv
@@ -203,6 +206,28 @@ def make_projects_visibile_to_children(new_project, parent_org):
     populate_project_organisation(new_project, parent_org)
 
 
+def create_tasks():
+    # Get the project
+    project = Project.query.filter_by(name="head office project").first()
+
+    no_of_tasks = 20
+    tasks_to_add_to_db = []
+    for i in range(no_of_tasks):
+        tasks_to_add_to_db.append(
+            Task(
+                name=f"Task {i+1}",
+                description=f"Description for task {i+1}",
+                project_id=project.id,
+            )
+        )
+    try:
+        db.session.add_all(tasks_to_add_to_db)
+        db.session.commit()
+    except Exception as e:
+        print(f"Error populating Tasks: {str(e)}")
+        db.session.rollback()
+
+
 def create_project():
     project_setters = ["head office", "area"]
 
@@ -239,28 +264,6 @@ def create_project():
         db.session.rollback()
 
 
-def create_tasks():
-    # Get the project
-    project = Project.query.filter_by(name="head office project").first()
-
-    no_of_tasks = 20
-    tasks_to_add_to_db = []
-    for i in range(no_of_tasks):
-        tasks_to_add_to_db.append(
-            Task(
-                name=f"Task {i+1}",
-                description=f"Description for task {i+1}",
-                project_id=project.id,
-            )
-        )
-    try:
-        db.session.add_all(tasks_to_add_to_db)
-        db.session.commit()
-    except Exception as e:
-        print(f"Error populating Tasks: {str(e)}")
-        db.session.rollback()
-
-
 def create_task_status():
     task_statuses = ["blocked", "not started", "complete", "in progress"]
     task_statuses_to_add_to_db = []
@@ -280,35 +283,19 @@ def create_task_progress():
 
 
 def delete_all_entries():
-    # Delete all entries in User_organisation table
     db.session.query(User_Organisation).delete()
-
-    # Delete all entries in User table
     db.session.query(User).delete()
-
-    # Delete all entries in Organisation table
     db.session.query(Organisation).delete()
-
-    # Delete all entries in OrganisationHeirarchy table
     db.session.query(OrganisationHeirarchy).delete()
-
-    # Delete all entries in Organisation_Organisation table
     db.session.query(OrganisationOrganisation).delete()
-
-    # Delete all entries in ProjectOrganisation table
     db.session.query(ProjectOrganisation).delete()
-
-    # Delete all entries in Project table
     db.session.query(Project).delete()
-
-    # Delete all entries in Task table
     db.session.query(Task).delete()
-
-    # Delete all entries in TaskProgress table
     db.session.query(TaskProgress).delete()
-
-    # Delete all entries in TaskStatus table
     db.session.query(TaskStatus).delete()
+    db.session.query(BlockedSuggestions).delete()
+    db.session.query(Email).delete()
+    db.session.query(EmailsSent).delete()
 
     # Commit the changes
     db.session.commit()
@@ -324,4 +311,5 @@ if __name__ == "__main__":
         assign_users_to_orgs()
         create_initial_org_groups()
         create_project()
+        create_task_status()
         create_tasks()
