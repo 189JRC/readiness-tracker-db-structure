@@ -301,3 +301,29 @@ class Email(db.Model):
     created_timestamp = db.Column(
         db.DateTime(timezone=True), server_default=db.func.now()
     )
+
+
+class EmailsSent(db.Model):
+    __tablename__ = "emails_sent"
+    id = db.Column(db.Integer, primary_key=True)
+    date_sent = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False)
+
+    # Maps to the emails table
+    email_id = db.Column(
+        db.Integer,
+        ForeignKey(
+            "emails.id",
+            name=f"fk_{__tablename__}_emails",
+            ondelete="CASCADE",
+        ),
+    )
+    # Maps to the user table
+    user_id = db.Column(
+        db.Integer,
+        ForeignKey(
+            "users.id",
+            name=f"fk_{__tablename__}_users",
+            ondelete="CASCADE",
+        ),
+    )
