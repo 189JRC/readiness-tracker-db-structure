@@ -108,7 +108,7 @@ class User_Organisation(db.Model):
     created_timestamp = db.Column(db.DateTime(timezone=True), server_default=func.now())
 
 
-class Organisation_Organisation(db.Model):
+class OrganisationOrganisation(db.Model):
     __tablename__ = "organisations_organisations"
     __table_args__ = (
         db.UniqueConstraint(
@@ -117,6 +117,7 @@ class Organisation_Organisation(db.Model):
             name="unique_parent_child_organisation",
         ),
     )
+
     id = db.Column(db.Integer, primary_key=True)
     parent_organisation_id = db.Column(
         db.Integer,
@@ -136,10 +137,6 @@ class Organisation_Organisation(db.Model):
         ),
         nullable=True,
     )
-    group_name = db.Column(
-        db.String(100), nullable=False, server_default=db.text("default")
-    )
-    is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-    created_timestamp = db.Column(
-        db.DateTime(timezone=True), server_default=db.func.now()
-    )
+    group_name = db.Column(db.String(100), nullable=False, default="default")
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False)
+    created_timestamp = db.Column(db.TIMESTAMP(timezone=True), default=db.func.now())
