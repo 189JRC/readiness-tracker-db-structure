@@ -56,8 +56,6 @@ class OrganisationHeirarchy(db.Model):
     created_timestamp = db.Column(
         db.DateTime(timezone=True), server_default=db.func.now()
     )
-    # Define the relationship back-reference
-    organisations = relationship("Organisation", backref="organisational_heirarchy")
 
 
 class Organisation(db.Model):
