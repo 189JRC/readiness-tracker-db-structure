@@ -77,7 +77,7 @@ def add_orgs():
                     name=f"org_unit_{org_unit_number}",
                     code=f"ORG{org_unit_number}",
                     type="Some Type",
-                    organisational_heirarchy=heirarchy_level,
+                    organisational_heirarchy_id=heirarchy_level.id,
                 )
             )
             org_unit_number += 1
@@ -93,9 +93,86 @@ def add_orgs():
         db.session.rollback()
 
 
+def add_system_users():
+    users_to_add_to_db = []
+    super_user_name = os.environ.get("super_user_name")
+    super_user_email = os.environ.get("super_user_email")
+    super_user_password = os.environ.get("super_user_password")
+
+    support_user_name = os.environ.get("support_user_name")
+    support_user_email = os.environ.get("support_user_email")
+    support_user_password = os.environ.get("support_user_password")
+
+    users_to_add_to_db.append(
+        User(
+            name=super_user_name,
+            email=super_user_email,
+            hashed_password=generate_password_hash(super_user_password),
+        )
+    )
+    users_to_add_to_db.append(
+        User(
+            name=support_user_name,
+            email=support_user_email,
+            hashed_password=generate_password_hash(support_user_password),
+        )
+    )
+
+    db.session.add_all(users_to_add_to_db)
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        print(f"Error adding User: {str(e)}")
+        db.session.rollback()
+        return
+
+
+def add_system_users_to_orgs():
+    super_org = (
+        db.session.query(Organisation)
+        .join(
+            OrganisationHeirarchy,
+            OrganisationHeirarchy.id == Organisation.organisational_heirarchy_id,
+        )
+        .filter(OrganisationHeirarchy.name == "super user")
+        .first()
+    )
+    ho_org = (
+        db.session.query(Organisation)
+        .join(
+            OrganisationHeirarchy,
+            OrganisationHeirarchy.id == Organisation.organisational_heirarchy_id,
+        )
+        .filter(OrganisationHeirarchy.name == "head office")
+        .first()
+    )
+
+    super_user = User.query.filter_by(name=os.environ.get("super_user_name")).first()
+    support_user = User.query.filter_by(
+        name=os.environ.get("support_user_name")
+    ).first()
+
+    user_org_relationship = User_Organisation(
+        user_id=super_user.id, organisation_id=super_org.id
+    )
+    db.session.add(user_org_relationship)
+
+    user_org_relationship = User_Organisation(
+        user_id=support_user.id, organisation_id=ho_org.id
+    )
+    db.session.add(user_org_relationship)
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        print(f"Error assigning users to organizations: {str(e)}")
+        db.session.rollback()
+
+
 def add_users():
     users_to_add_to_db = []
-    no_of_users_to_add = 3 * len(heirarchy_lst)
+    no_of_users_to_add = len(Organisation.query.all()) * 3
 
     for _ in range(no_of_users_to_add):
         users_to_add_to_db.append(
@@ -207,42 +284,52 @@ def make_projects_visibile_to_children(new_project, parent_org):
 
 
 def create_project():
-    project_setters = ["head office", "area"]
+    project_setters = [
+        "head office",
+        "brand",
+        "retailer",
+    ]
 
     for setter in project_setters:
         # Step 1: Retrieve the Head Office organization
-        heirarchy_obj = OrganisationHeirarchy.query.filter_by(name=setter).first()
+        heirarchy_objs = OrganisationHeirarchy.query.filter_by(name=setter).all()
 
-        org = Organisation.query.filter_by(
-            organisational_heirarchy_id=heirarchy_obj.id
-        ).first()
+        for i in range(3):
+            heirarchy_obj = random.choice(heirarchy_objs)
+            org = Organisation.query.filter_by(
+                organisational_heirarchy_id=heirarchy_obj.id
+            ).first()
+            users = (
+                db.session.query(User)
+                .join(User_Organisation, User_Organisation.user_id == User.id)
+                .filter(User_Organisation.organisation_id == org.id)
+                .all()
+            )
 
-        user = User.query.all()[0]
+            # Step 2: Create a new project
+            new_project = Project(
+                name=f"{setter} project {i+1}",
+                description=f"This {setter}s project description {i+1}'",
+                organisation_id=org.id,
+                user_id=random.choice(users).id,
+            )
 
-        # Step 2: Create a new project
-        new_project = Project(
-            name=f"{setter} project",
-            description=f"This {setter} project will be seen by all children",
-            organisation_id=org.id,
-            user_id=user.id,
-        )
+            db.session.add(new_project)
 
-        db.session.add(new_project)
+            try:
+                db.session.commit()
+            except Exception as e:
+                print(f"Error creating project: {str(e)}")
+                db.session.rollback()
+                return
 
-        try:
-            db.session.commit()
-        except Exception as e:
-            print(f"Error creating project: {str(e)}")
-            db.session.rollback()
-            return
+            make_projects_visibile_to_children(new_project, org)
 
-        make_projects_visibile_to_children(new_project, org)
-
-    try:
-        db.session.commit()
-    except Exception as e:
-        print(f"Error populating ProjectOrganisation: {str(e)}")
-        db.session.rollback()
+            try:
+                db.session.commit()
+            except Exception as e:
+                print(f"Error populating ProjectOrganisation: {str(e)}")
+                db.session.rollback()
 
 
 def create_task_status():
@@ -261,50 +348,51 @@ def create_task_status():
 
 def create_tasks():
     # Get the project
-    project = Project.query.filter_by(name="head office project").first()
-
-    no_of_tasks = 20
-    tasks_to_add_to_db = []
-    for i in range(no_of_tasks):
-        tasks_to_add_to_db.append(
-            Task(
-                name=f"Task {i+1}",
-                description=f"Description for task {i+1}",
-                project_id=project.id,
+    projects = Project.query.all()
+    for project in projects:
+        no_of_tasks = 10
+        tasks_to_add_to_db = []
+        for i in range(no_of_tasks):
+            tasks_to_add_to_db.append(
+                Task(
+                    name=f"Project: {project.name} Task {i+1}",
+                    description=f"{project.name}: Description for task {i+1}",
+                    project_id=project.id,
+                )
             )
-        )
-    try:
-        db.session.add_all(tasks_to_add_to_db)
-        db.session.commit()
-    except Exception as e:
-        print(f"Error populating Tasks: {str(e)}")
-        db.session.rollback()
+        try:
+            db.session.add_all(tasks_to_add_to_db)
+            db.session.commit()
+        except Exception as e:
+            print(f"Error populating Tasks: {str(e)}")
+            db.session.rollback()
 
 
 def create_task_progress():
-    project = Project.query.filter_by(name="head office project").first()
-    user = User.query.all()[0]
-    org = Organisation.query.all()[0]
-    task_progresses_to_add_to_db = []
-    task_status = TaskStatus.query.filter_by(name="not started").first()
+    projects = Project.query.all()
+    for project in projects:
+        user = User.query.all()[0]
+        org = Organisation.query.all()[0]
+        task_progresses_to_add_to_db = []
+        task_status = TaskStatus.query.filter_by(name="not started").first()
 
-    tasks = Task.query.filter_by(project_id=project.id).all()
-    for task in tasks:
-        task_progresses_to_add_to_db.append(
-            TaskProgress(
-                organisation_id=org.id,
-                task_id=task.id,
-                user_id=user.id,
-                task_status_id=task_status.id,
+        tasks = Task.query.filter_by(project_id=project.id).all()
+        for task in tasks:
+            task_progresses_to_add_to_db.append(
+                TaskProgress(
+                    organisation_id=org.id,
+                    task_id=task.id,
+                    user_id=user.id,
+                    task_status_id=task_status.id,
+                )
             )
-        )
 
-    try:
-        db.session.add_all(task_progresses_to_add_to_db)
-        db.session.commit()
-    except Exception as e:
-        print(f"Error populating Tasks: {str(e)}")
-        db.session.rollback()
+        try:
+            db.session.add_all(task_progresses_to_add_to_db)
+            db.session.commit()
+        except Exception as e:
+            print(f"Error populating Tasks: {str(e)}")
+            db.session.rollback()
 
 
 def delete_all_entries():
@@ -393,12 +481,14 @@ if __name__ == "__main__":
         delete_all_entries()
         add_org_heirarchy()
         add_orgs()
+        add_system_users()
+        # add_system_users_to_orgs()
         add_users()
         assign_users_to_orgs()
         create_initial_org_groups()
         create_project()
         create_task_status()
         create_tasks()
-        create_task_progress()
+        # create_task_progress()
 
         # get_user_projects(user_id=902, org_id=4774)
