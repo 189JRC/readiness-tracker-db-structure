@@ -128,48 +128,6 @@ def add_system_users():
         return
 
 
-def add_system_users_to_orgs():
-    super_org = (
-        db.session.query(Organisation)
-        .join(
-            OrganisationHeirarchy,
-            OrganisationHeirarchy.id == Organisation.organisational_heirarchy_id,
-        )
-        .filter(OrganisationHeirarchy.name == "super user")
-        .first()
-    )
-    ho_org = (
-        db.session.query(Organisation)
-        .join(
-            OrganisationHeirarchy,
-            OrganisationHeirarchy.id == Organisation.organisational_heirarchy_id,
-        )
-        .filter(OrganisationHeirarchy.name == "head office")
-        .first()
-    )
-
-    super_user = User.query.filter_by(name=os.environ.get("super_user_name")).first()
-    support_user = User.query.filter_by(
-        name=os.environ.get("support_user_name")
-    ).first()
-
-    user_org_relationship = User_Organisation(
-        user_id=super_user.id, organisation_id=super_org.id
-    )
-    db.session.add(user_org_relationship)
-
-    user_org_relationship = User_Organisation(
-        user_id=support_user.id, organisation_id=ho_org.id
-    )
-    db.session.add(user_org_relationship)
-
-    try:
-        db.session.commit()
-    except Exception as e:
-        print(f"Error assigning users to organizations: {str(e)}")
-        db.session.rollback()
-
-
 def add_users():
     users_to_add_to_db = []
     no_of_users_to_add = len(Organisation.query.all()) * 3
@@ -371,8 +329,19 @@ def create_tasks():
 def create_task_progress():
     projects = Project.query.all()
     for project in projects:
-        user = User.query.all()[0]
-        org = Organisation.query.all()[0]
+        # Get a user associated to that project
+        user = (
+            db.session.query(User)
+            .join(Project, Project.user_id == User.id)
+            .filter(Project.id == project.id)
+            .first()
+        )
+        org = (
+            db.session.query(Organisation)
+            .join(Project, Project.organisation_id == Organisation.id)
+            .filter(Project.id == project.id)
+            .first()
+        )
         task_progresses_to_add_to_db = []
         task_status = TaskStatus.query.filter_by(name="not started").first()
 
@@ -482,13 +451,10 @@ if __name__ == "__main__":
         add_org_heirarchy()
         add_orgs()
         add_system_users()
-        # add_system_users_to_orgs()
         add_users()
         assign_users_to_orgs()
         create_initial_org_groups()
         create_project()
         create_task_status()
         create_tasks()
-        # create_task_progress()
-
-        # get_user_projects(user_id=902, org_id=4774)
+        create_task_progress()
